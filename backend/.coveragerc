@@ -1,0 +1,67 @@
+[run]
+# Configuration de la couverture de code
+
+source = .
+omit =
+    # Environnement virtuel
+    .venv/*
+    venv/*
+    */site-packages/*
+    
+    # Tests
+    tests/*
+    */tests/*
+    
+    # Migrations Alembic
+    alembic/*
+    */alembic/*
+    
+    # Configuration
+    config.py
+    
+    # Point d'entrée
+    main.py
+    
+    # Database setup
+    database.py
+
+[report]
+# Exclure les lignes de la couverture
+exclude_lines =
+    # Pragmas standard
+    pragma: no cover
+    
+    # Blocs de débogage
+    def __repr__
+    def __str__
+    
+    # Code non atteignable
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    if typing.TYPE_CHECKING:
+    
+    # Abstractions
+    raise NotImplementedError
+    @abstractmethod
+    @abc.abstractmethod
+    
+    # Gestion d'erreurs génériques
+    except Exception:
+    except BaseException:
+    
+    # Pass statements
+    pass
+
+# Précision de la couverture
+precision = 2
+
+# Afficher les lignes manquantes
+show_missing = True
+
+# Ignorer les erreurs
+ignore_errors = True
+
+[html]
+# Configuration du rapport HTML
+directory = htmlcov
+title = CryptoTracker Test Coverage Report
