@@ -1,0 +1,188 @@
+/**
+ * theme.css — Styles globaux pour les transitions de thème
+ * 
+ * Animations fluides et optimisées pour le changement de thème
+ */
+
+/* ── Transitions globales ────────────────────────────────────────── */
+
+body.theme-transition,
+body.theme-transition *,
+body.theme-transition *::before,
+body.theme-transition *::after {
+  transition: 
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    fill 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    stroke 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* ── Scrollbar personnalisée ─────────────────────────────────────── */
+
+/* Light mode */
+[data-theme="light"] {
+  scrollbar-color: #CBD5E1 #F1F5F9;
+}
+
+[data-theme="light"]::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="light"]::-webkit-scrollbar-track {
+  background: #F1F5F9;
+  border-radius: 4px;
+}
+
+[data-theme="light"]::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+[data-theme="light"]::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Dark mode */
+[data-theme="dark"] {
+  scrollbar-color: #4B5563 #1F2937;
+}
+
+[data-theme="dark"]::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="dark"]::-webkit-scrollbar-track {
+  background: #1F2937;
+  border-radius: 4px;
+}
+
+[data-theme="dark"]::-webkit-scrollbar-thumb {
+  background: #4B5563;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+[data-theme="dark"]::-webkit-scrollbar-thumb:hover {
+  background: #6B7280;
+}
+
+/* ── Animations personnalisées ───────────────────────────────────── */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* ── Utilitaires ─────────────────────────────────────────────────── */
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── Optimisations performance ───────────────────────────────────── */
+
+/* Forcer l'accélération GPU pour les transitions */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Réduire les animations si l'utilisateur préfère */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Effets de glassmorphism ─────────────────────────────────────── */
+
+.glass-effect-light {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.glass-effect-dark {
+  background: rgba(26, 26, 26, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ── Sélection de texte personnalisée ────────────────────────────── */
+
+[data-theme="light"] ::selection {
+  background: rgba(108, 99, 255, 0.3);
+  color: #1A1A1A;
+}
+
+[data-theme="dark"] ::selection {
+  background: rgba(139, 132, 255, 0.3);
+  color: #F9FAFB;
+}
+
+/* ── Focus visible amélioré ──────────────────────────────────────── */
+
+[data-theme="light"] *:focus-visible {
+  outline: 2px solid #6C63FF;
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] *:focus-visible {
+  outline: 2px solid #8B84FF;
+  outline-offset: 2px;
+}
+

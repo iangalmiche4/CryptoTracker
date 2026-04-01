@@ -1,7 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App.jsx'
 import CoinDetail from './pages/CoinDetail.jsx'
@@ -10,16 +9,10 @@ import Register from './pages/Register.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
+import { ThemeProvider } from './contexts/ThemeContext.jsx'
+import { LanguageProvider } from './contexts/LanguageContext.jsx'
 import { RETRY_CONFIG } from './config'
-
-const theme = createTheme({
-  palette: {
-    mode: 'dark',
-    primary: { main: '#6C63FF' },
-    background: { default: '#0F0F1A', paper: '#1A1A2E' },
-  },
-  shape: { borderRadius: 12 },
-})
+import './theme.css'
 
 /**
  * QueryClient — instance globale de TanStack Query.
@@ -67,21 +60,30 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       Doit envelopper l'app entière, y compris le router.
     */}
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
+      {/*
+        LanguageProvider gère le multi-langues (FR/EN)
+        Système léger sans bibliothèque externe
+      */}
+      <LanguageProvider>
         {/*
-          ErrorBoundary enveloppe toute l'application pour capturer les erreurs
-          React qui se produisent n'importe où dans l'arbre de composants.
-          Si une erreur survient, l'utilisateur voit une UI de secours au lieu
-          d'un écran blanc.
+          ThemeProvider personnalisé avec gestion Dark/Light mode
+          Inclut automatiquement MUI ThemeProvider et CssBaseline
+          Gère la persistance localStorage et les préférences système
         */}
-        <ErrorBoundary>
-          <BrowserRouter>
-            {/*
-              AuthProvider fournit le contexte d'authentification à toute l'app.
-              Doit être à l'intérieur du Router pour pouvoir utiliser useNavigate.
-            */}
-            <AuthProvider>
+        <ThemeProvider>
+          {/*
+            ErrorBoundary enveloppe toute l'application pour capturer les erreurs
+            React qui se produisent n'importe où dans l'arbre de composants.
+            Si une erreur survient, l'utilisateur voit une UI de secours au lieu
+            d'un écran blanc.
+          */}
+          <ErrorBoundary>
+            <BrowserRouter>
+              {/*
+                AuthProvider fournit le contexte d'authentification à toute l'app.
+                Doit être à l'intérieur du Router pour pouvoir utiliser useNavigate.
+              */}
+              <AuthProvider>
               <Routes>
                 {/* Routes publiques */}
                 <Route path="/login" element={<Login />} />
@@ -109,6 +111,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           </BrowserRouter>
         </ErrorBoundary>
       </ThemeProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   </React.StrictMode>
 )

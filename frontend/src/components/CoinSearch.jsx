@@ -22,9 +22,10 @@ import {
 } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import { useCoinSearch } from '../hooks/useCoinSearch'
+import { useTranslation } from '../contexts/LanguageContext'
 
 export default function CoinSearch({ activeCoinIds, onAdd }) {
-
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const { results, searching } = useCoinSearch(query)
 
@@ -40,7 +41,7 @@ export default function CoinSearch({ activeCoinIds, onAdd }) {
       <TextField
         fullWidth
         size="small"
-        placeholder="Rechercher un coin…"
+        placeholder={t('dashboard.searchPlaceholder')}
         value={query}
         onChange={e => setQuery(e.target.value)}
         slotProps={{
@@ -100,7 +101,7 @@ export default function CoinSearch({ activeCoinIds, onAdd }) {
 
                   {alreadyAdded && (
                     <Typography variant="caption" color="text.disabled">
-                      Déjà ajouté
+                      {t('dashboard.alreadyAdded')}
                     </Typography>
                   )}
                 </ListItemButton>

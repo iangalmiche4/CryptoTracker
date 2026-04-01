@@ -38,6 +38,7 @@ import RefreshIcon from '@mui/icons-material/Refresh'
 import { useCryptoPrices } from './hooks/useCryptoPrices'
 import { useUserCoins, useUserAlerts } from './hooks/useUserData'
 import { usePriceAlerts } from './hooks/usePriceAlerts'
+import { useTranslation } from './contexts/LanguageContext'
 
 import Header from './components/Header'
 import SortableCard from './components/SortableCard'
@@ -47,6 +48,8 @@ import CoinSearch from './components/CoinSearch'
 import AlertToast from './components/AlertToast'
 
 export default function App() {
+  const { t } = useTranslation()
+  
   // ── État local ────────────────────────────────────────────────────────
 
   const [activeId, setActiveId] = useState(null) // ID du coin en cours de drag
@@ -162,16 +165,16 @@ export default function App() {
         {/* ── En-tête : titre + dernière mise à jour + recherche + refresh ── */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Box>
-            <Typography variant="h4" fontWeight={800}>Dashboard</Typography>
+            <Typography variant="h4" fontWeight={800}>{t('dashboard.title')}</Typography>
             <Typography variant="body2" color="text.secondary">
               {lastUpdate
-                ? `Mis à jour : ${lastUpdate.toLocaleTimeString()}`
-                : 'Chargement…'}
+                ? `${t('dashboard.lastUpdate')} : ${lastUpdate.toLocaleTimeString()}`
+                : t('common.loading')}
             </Typography>
           </Box>
           <Box display="flex" alignItems="center" gap={2}>
             <CoinSearch activeCoinIds={coinIds} onAdd={handleAddCoin} />
-            <Tooltip title="Rafraîchir maintenant">
+            <Tooltip title={t('dashboard.refreshIn')}>
               <IconButton onClick={handleRefresh} color="primary">
                 <RefreshIcon />
               </IconButton>
@@ -209,7 +212,7 @@ export default function App() {
         {/* Message si aucun coin */}
         {!loading && coinIds.length === 0 && (
           <Alert severity="info" sx={{ mb: 3 }}>
-            Aucune cryptomonnaie suivie. Utilisez la recherche pour en ajouter.
+            {t('dashboard.noCryptos')}. {t('dashboard.addFirst')}.
           </Alert>
         )}
 

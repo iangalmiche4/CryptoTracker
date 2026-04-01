@@ -12,10 +12,12 @@
 import { useEffect } from 'react'
 import { Box, LinearProgress, Typography } from '@mui/material'
 import { useCountdown } from '../hooks/useCountdown'
+import { useTranslation } from '../contexts/LanguageContext'
 import { REFRESH_INTERVAL } from '../config'
 
 export default function RefreshBar({ onRefresh }) {
   const remaining = useCountdown(REFRESH_INTERVAL)
+  const { t } = useTranslation()
 
   // Déclenche le refresh quand remaining atteint 1
   useEffect(() => {
@@ -29,7 +31,7 @@ export default function RefreshBar({ onRefresh }) {
     <Box sx={{ width: '100%', mb: 3 }}>
       <Box display="flex" justifyContent="space-between" mb={0.5}>
         <Typography variant="caption" color="text.secondary">
-          Prochain refresh
+          {t('dashboard.refreshIn')}
         </Typography>
         <Typography variant="caption" color="primary.main" fontWeight={700}>
           {remaining}s

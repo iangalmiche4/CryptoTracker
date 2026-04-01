@@ -1,6 +1,6 @@
 /**
  * CoinDetail — Page de détail d'une cryptomonnaie
- * 
+ *
  * Affiche :
  * - Graphique historique interactif (7/14/30/90 jours)
  * - Métriques de marché (market cap, volume, ATH, supply)
@@ -28,6 +28,8 @@ import {
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from 'recharts'
+import Header from '../components/Header'
+import { useTranslation } from '../contexts/LanguageContext'
 
 // ── Utilitaires ───────────────────────────────────────────────────────────
 
@@ -79,10 +81,12 @@ function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
     <Box sx={{
-      background: '#1A1A2E',
-      border: '1px solid rgba(108,99,255,0.3)',
+      background: 'background.paper',
+      border: '1px solid',
+      borderColor: 'primary.main',
       borderRadius: 2,
       p: 1.5,
+      boxShadow: 3,
     }}>
       <Typography variant="caption" color="text.secondary">{label}</Typography>
       <Typography variant="body2" fontWeight={700} color="primary.main">
@@ -97,6 +101,7 @@ function CustomTooltip({ active, payload, label }) {
 export default function CoinDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [days, setDays] = useState(7)
 
   // Query détail : infos complètes du coin
@@ -120,17 +125,19 @@ export default function CoinDetail() {
   const hasValidData = detail && detail.market && detail.name
 
   return (
-    <Container maxWidth="lg" sx={{ py: 6 }}>
-      {/* Bouton retour */}
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/')}
-        sx={{ mb: 4, borderRadius: 3 }}
-        variant="outlined"
-        color="inherit"
-      >
-        Retour au dashboard
-      </Button>
+    <>
+      <Header />
+      <Container maxWidth="lg" sx={{ py: 6 }}>
+        {/* Bouton retour */}
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/')}
+          sx={{ mb: 4, borderRadius: 3 }}
+          variant="outlined"
+          color="inherit"
+        >
+          {t('coinDetail.backToDashboard')}
+        </Button>
 
       {/* Spinner pendant le chargement */}
       {loadingDetail && (
@@ -142,8 +149,7 @@ export default function CoinDetail() {
       {/* Message si données invalides (rate limit sans cache) */}
       {!loadingDetail && detail && !hasValidData && (
         <Alert severity="warning" sx={{ mb: 3 }}>
-          Impossible de charger les données pour ce coin.
-          CoinGecko a atteint sa limite de requêtes. Veuillez réessayer dans quelques instants.
+          {t('coinDetail.loadError')}
         </Alert>
       )}
 
@@ -172,7 +178,7 @@ export default function CoinDetail() {
                   href={detail.links.homepage} target="_blank"
                   sx={{ borderRadius: 3 }}
                 >
-                  Site officiel
+                  {t('coinDetail.officialWebsite')}
                 </Button>
               )}
               {detail.links.twitter && (
@@ -193,7 +199,7 @@ export default function CoinDetail() {
               <Box display="flex" justifyContent="space-between"
                 alignItems="center" mb={3} flexWrap="wrap" gap={2}>
                 <Typography variant="h6" fontWeight={700}>
-                  Historique des prix
+                  {t('coinDetail.priceHistory')}
                 </Typography>
 
                 {/* Sélecteur de période */}
@@ -205,7 +211,7 @@ export default function CoinDetail() {
                 >
                   {[7, 14, 30, 90].map(d => (
                     <ToggleButton key={d} value={d} sx={{ px: 2, borderRadius: 2 }}>
-                      {d}j
+                      {d}{t('coinDetail.days')}
                     </ToggleButton>
                   ))}
                 </ToggleButtonGroup>
@@ -261,22 +267,22 @@ export default function CoinDetail() {
 
           {/* ── Métriques de marché ── */}
           <Typography variant="h6" fontWeight={700} mb={2}>
-            Métriques de marché
+            {t('coinDetail.marketMetrics')}
           </Typography>
           <Grid container spacing={2} mb={4}>
             {[
-              { label: 'Market cap', value: formatLarge(detail.market.market_cap) },
-              { label: 'Volume 24h', value: formatLarge(detail.market.volume_24h) },
-              { label: 'Valorisation diluée', value: formatLarge(detail.market.fully_diluted_val) },
+              { label: t('coinDetail.marketCap'), value: formatLarge(detail.market.market_cap) },
+              { label: t('coinDetail.volume24h'), value: formatLarge(detail.market.volume_24h) },
+              { label: t('coinDetail.fullyDilutedVal'), value: formatLarge(detail.market.fully_diluted_val) },
               {
-                label: 'ATH',
+                label: t('coinDetail.ath'),
                 value: formatLarge(detail.market.ath),
                 sub: detail.market.ath_change_pct
-                  ? `${detail.market.ath_change_pct.toFixed(1)}% depuis l'ATH`
+                  ? `${detail.market.ath_change_pct.toFixed(1)}% ${t('coinDetail.athChange')}`
                   : ''
               },
               {
-                label: 'Offre en circulation',
+                label: t('coinDetail.circulatingSupply'),
                 value: detail.market.circulating_supply
                   ? `${(detail.market.circulating_supply / 1e6).toFixed(2)}M ${detail.symbol}`
                   : '—'
@@ -290,18 +296,18 @@ export default function CoinDetail() {
 
           {/* ── Variations de prix ── */}
           <Typography variant="h6" fontWeight={700} mb={2}>
-            Variations de prix
+            {t('coinDetail.priceChanges')}
           </Typography>
           <Card sx={{ mb: 4 }}>
             <CardContent sx={{ p: 3 }}>
-              <Grid container spacing={3}>
+              <Grid container spacing={4}>
                 {[
-                  { label: '24 heures', value: detail.market.change_24h },
-                  { label: '7 jours', value: detail.market.change_7d },
-                  { label: '30 jours', value: detail.market.change_30d },
+                  { label: t('coinDetail.hours24'), value: detail.market.change_24h },
+                  { label: t('coinDetail.days7'), value: detail.market.change_7d },
+                  { label: t('coinDetail.days30'), value: detail.market.change_30d },
                 ].map(({ label, value }) => (
                   <Grid item xs={12} sm={4} key={label}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
                       <Typography color="text.secondary">{label}</Typography>
                       <ChangeChip value={value} />
                     </Box>
@@ -315,16 +321,16 @@ export default function CoinDetail() {
           {detail.sentiment_up_pct != null && (
             <>
               <Typography variant="h6" fontWeight={700} mb={2}>
-                Sentiment communautaire
+                {t('coinDetail.communitySentiment')}
               </Typography>
               <Card sx={{ mb: 4 }}>
                 <CardContent sx={{ p: 3 }}>
                   <Box display="flex" justifyContent="space-between" mb={1}>
                     <Typography variant="body2" color="success.main" fontWeight={600}>
-                      Haussier {detail.sentiment_up_pct.toFixed(0)}%
+                      {t('coinDetail.bullish')} {detail.sentiment_up_pct.toFixed(0)}%
                     </Typography>
                     <Typography variant="body2" color="error.main" fontWeight={600}>
-                      Baissier {(100 - detail.sentiment_up_pct).toFixed(0)}%
+                      {t('coinDetail.bearish')} {(100 - detail.sentiment_up_pct).toFixed(0)}%
                     </Typography>
                   </Box>
                   {/* Barre bicolore avec frontière nette */}
@@ -344,9 +350,14 @@ export default function CoinDetail() {
           {detail.description && (
             <>
               <Divider sx={{ mb: 4, borderColor: 'rgba(255,255,255,0.07)' }} />
-              <Typography variant="h6" fontWeight={700} mb={2}>
-                À propos de {detail.name}
-              </Typography>
+              <Box display="flex" alignItems="center" gap={1} mb={2}>
+                <Typography variant="h6" fontWeight={700}>
+                  {t('coinDetail.about')} {detail.name}
+                </Typography>
+                <Typography variant="caption" color="text.disabled" sx={{ fontStyle: 'italic' }}>
+                  {t('coinDetail.descriptionNote')}
+                </Typography>
+              </Box>
               <Typography
                 variant="body2"
                 color="text.secondary"
@@ -359,6 +370,7 @@ export default function CoinDetail() {
           )}
         </>
       )}
-    </Container>
+      </Container>
+    </>
   )
 }
