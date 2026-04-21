@@ -83,6 +83,46 @@ class AlertResponse(BaseModel):
 
     class Config:
         from_attributes = True
+# ── Schémas pour les holdings ─────────────────────────────────────────
+
+class HoldingCreate(BaseModel):
+    """Schéma pour créer un holding"""
+    coin_id: str = Field(..., description="ID CoinGecko (ex: bitcoin)")
+    quantity: float = Field(..., gt=0, description="Quantité possédée")
+    purchase_price: float = Field(..., gt=0, description="Prix d'achat en USD")
+    purchase_date: datetime = Field(..., description="Date d'achat")
+    notes: Optional[str] = Field(None, max_length=500, description="Notes optionnelles")
+
+
+class HoldingUpdate(BaseModel):
+    """Schéma pour mettre à jour un holding"""
+    quantity: Optional[float] = Field(None, gt=0, description="Nouvelle quantité")
+    purchase_price: Optional[float] = Field(None, gt=0, description="Nouveau prix d'achat")
+    purchase_date: Optional[datetime] = Field(None, description="Nouvelle date d'achat")
+    notes: Optional[str] = Field(None, max_length=500, description="Nouvelles notes")
+
+
+class HoldingResponse(BaseModel):
+    """Schéma de réponse pour un holding"""
+    id: int
+    coin_id: str
+    quantity: float
+    purchase_price: float
+    purchase_date: datetime
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class HoldingWithStats(HoldingResponse):
+    """Holding enrichi avec statistiques calculées"""
+    current_price: float
+    current_value: float
+    total_gain_loss: float
+    gain_loss_percentage: float
 
 
 # ── Schémas pour les réponses groupées ────────────────────────────────
@@ -92,5 +132,7 @@ class UserDataResponse(BaseModel):
     user: UserResponse
     coins: list[CoinResponse]
     alerts: list[AlertResponse]
+
+ 
 
  

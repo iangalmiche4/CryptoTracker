@@ -5,6 +5,7 @@ Tables :
   - users : Comptes utilisateurs avec authentification
   - user_coins : Coins suivis par chaque utilisateur (avec position pour drag & drop)
   - user_alerts : Alertes de prix configurées par utilisateur
+  - user_holdings : Investissements crypto de l'utilisateur (portfolio)
 """
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum
@@ -48,6 +49,7 @@ class User(Base):
     # Relations
     coins = relationship("UserCoin", back_populates="user", cascade="all, delete-orphan")
     alerts = relationship("UserAlert", back_populates="user", cascade="all, delete-orphan")
+    holdings = relationship("UserHolding", back_populates="user", cascade="all, delete-orphan")
 
 
 # ── Modèle UserCoin ───────────────────────────────────────────────────
@@ -109,8 +111,45 @@ class UserAlert(Base):
     type = Column(Enum(AlertType), nullable=False)
     threshold = Column(Float, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
+    
     # Relations
     user = relationship("User", back_populates="alerts")
+
+
+# ── Modèle UserHolding ────────────────────────────────────────────────
+
+class UserHolding(Base):
+    """
+    Table user_holdings : Investissements crypto de l'utilisateur
+    
+    Champs :
+      - id : Clé primaire auto-incrémentée
+      - user_id : Référence vers users.id
+      - coin_id : ID CoinGecko (ex: "bitcoin", "ethereum")
+      - quantity : Quantité possédée (ex: 0.5 BTC)
+      - purchase_price : Prix d'achat en USD (ex: 45000)
+      - purchase_date : Date d'achat
+      - notes : Notes optionnelles (ex: "Achat DCA mensuel")
+      - created_at : Date de création de l'entrée
+      - updated_at : Date de dernière modification
+    
+    Relations :
+      - user : Utilisateur propriétaire
+    """
+    __tablename__ = "user_holdings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    coin_id = Column(String, nullable=False, index=True)
+    quantity = Column(Float, nullable=False)
+    purchase_price = Column(Float, nullable=False)
+    purchase_date = Column(DateTime(timezone=True), nullable=False)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relations
+    user = relationship("User", back_populates="holdings")
+
 
  

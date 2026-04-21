@@ -1,11 +1,11 @@
 /**
  * useCryptoPrices — Hook de fetch des prix crypto via TanStack Query
- * 
+ *
  * Responsabilités :
  *  - Fetcher les prix depuis /api/prices avec cache automatique
  *  - Filtrer immédiatement les coins supprimés (mise à jour optimiste)
  *  - Exposer refetch() pour le refresh manuel
- * 
+ *
  * Stratégie anti-rate-limit :
  *  - Backend : cache 30s + fallback données périmées si 429
  *  - Frontend : staleTime 90s + retry exponentiel (1s → 2s → 4s)
@@ -16,8 +16,11 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { API_BASE_URL, STALE_TIME, RETRY_CONFIG } from '../config'
+import { useTranslation } from '../contexts/LanguageContext'
 
 export function useCryptoPrices(coins) {
+  const { t } = useTranslation()
+  
   // Clé de cache normalisée : ['ethereum', 'bitcoin'] === ['bitcoin', 'ethereum']
   // Évite un double fetch pour la même combinaison de coins
   const coinsKey = [...coins].sort().join(',')
@@ -26,6 +29,7 @@ export function useCryptoPrices(coins) {
     data,          // { bitcoin: {...}, ethereum: {...} }
     isPending,     // true avant le premier fetch réussi
     isError,       // true si échec après les retries
+    error: queryError, // Objet d'erreur
     dataUpdatedAt, // Timestamp du dernier fetch réussi
     refetch,       // Fonction pour forcer un fetch immédiat
   } = useQuery({
@@ -70,10 +74,23 @@ export function useCryptoPrices(coins) {
     )
   }, [data, coins])
 
+  // Déterminer le message d'erreur approprié
+  const errorMessage = useMemo(() => {
+    if (!isError) return null
+    
+    // Vérifier si c'est une erreur 429 (Too Many Requests)
+    if (queryError?.response?.status === 429) {
+      return t('common.tooManyRequests')
+    }
+    
+    // Message générique pour les autres erreurs
+    return t('common.backendError')
+  }, [isError, queryError, t])
+
   return {
     prices,
     loading: isPending && coins.length > 0,
-    error: isError ? 'Impossible de contacter le backend.' : null,
+    error: errorMessage,
     lastUpdate: dataUpdatedAt ? new Date(dataUpdatedAt) : null,
     refetch,
   }

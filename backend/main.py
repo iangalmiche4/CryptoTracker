@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 from config import settings
-from routers import auth, user, coingecko
+from routers import auth, user, coingecko, holdings
 
 # ── Configuration du logging ──────────────────────────────────────────
 
@@ -50,6 +50,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(user.router)
 app.include_router(coingecko.router)
+app.include_router(holdings.router)
 
 # ── Endpoint racine ───────────────────────────────────────────────────
 

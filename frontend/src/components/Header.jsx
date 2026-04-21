@@ -8,10 +8,12 @@
  * - Bouton de déconnexion
  */
 
-import { AppBar, Toolbar, Typography, Box, IconButton, Tooltip, useTheme as useMuiTheme, ToggleButtonGroup, ToggleButton } from '@mui/material'
+import { AppBar, Toolbar, Typography, Box, IconButton, Tooltip, Button, useTheme as useMuiTheme, ToggleButtonGroup, ToggleButton } from '@mui/material'
 import LogoutIcon from '@mui/icons-material/Logout'
 import LightModeIcon from '@mui/icons-material/LightMode'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
+import DashboardIcon from '@mui/icons-material/Dashboard'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useTranslation } from '../contexts/LanguageContext'
@@ -45,16 +47,37 @@ export default function Header() {
           variant="h6"
           component="div"
           sx={{
-            flexGrow: 1,
             color: 'text.primary',
             fontWeight: 800,
             display: 'flex',
             alignItems: 'center',
             gap: 1,
+            cursor: 'pointer'
           }}
+          onClick={() => navigate('/')}
         >
           {t('header.appName')}
         </Typography>
+        
+        {/* Navigation buttons */}
+        <Box sx={{ flexGrow: 1, display: 'flex', gap: 1, ml: 3 }}>
+          <Button
+            color="inherit"
+            startIcon={<DashboardIcon />}
+            onClick={() => navigate('/')}
+            sx={{ color: 'text.primary' }}
+          >
+            Dashboard
+          </Button>
+          <Button
+            color="inherit"
+            startIcon={<AccountBalanceWalletIcon />}
+            onClick={() => navigate('/portfolio')}
+            sx={{ color: 'text.primary' }}
+          >
+            {t('portfolio.title')}
+          </Button>
+        </Box>
         
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>

@@ -24,6 +24,7 @@ body.theme-transition *::after {
 /* Light mode */
 [data-theme="light"] {
   scrollbar-color: #CBD5E1 #F1F5F9;
+  --date-picker-invert: 0;
 }
 
 [data-theme="light"]::-webkit-scrollbar {
@@ -49,6 +50,7 @@ body.theme-transition *::after {
 /* Dark mode */
 [data-theme="dark"] {
   scrollbar-color: #4B5563 #1F2937;
+  --date-picker-invert: 1;
 }
 
 [data-theme="dark"]::-webkit-scrollbar {

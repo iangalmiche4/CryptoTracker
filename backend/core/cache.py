@@ -3,8 +3,6 @@ cache.py — Système de cache en mémoire
 
 Implémente un cache simple avec TTL (Time To Live) pour réduire
 les appels à l'API CoinGecko et améliorer les performances.
-
-Note : Pour la production, considérer Redis pour un cache distribué.
 """
 
 import time

@@ -20,7 +20,6 @@ import {
   CircularProgress, Avatar, Skeleton,
   ToggleButton, ToggleButtonGroup, Alert,
 } from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import TwitterIcon from '@mui/icons-material/Twitter'
 import {
@@ -128,17 +127,6 @@ export default function CoinDetail() {
     <>
       <Header />
       <Container maxWidth="lg" sx={{ py: 6 }}>
-        {/* Bouton retour */}
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/')}
-          sx={{ mb: 4, borderRadius: 3 }}
-          variant="outlined"
-          color="inherit"
-        >
-          {t('coinDetail.backToDashboard')}
-        </Button>
-
       {/* Spinner pendant le chargement */}
       {loadingDetail && (
         <Box display="flex" justifyContent="center" mt={8}>

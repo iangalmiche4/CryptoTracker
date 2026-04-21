@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App.jsx'
 import CoinDetail from './pages/CoinDetail.jsx'
+import Portfolio from './pages/Portfolio.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
@@ -103,6 +104,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   element={
                     <ProtectedRoute>
                       <CoinDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/portfolio"
+                  element={
+                    <ProtectedRoute>
+                      <Portfolio />
                     </ProtectedRoute>
                   }
                 />

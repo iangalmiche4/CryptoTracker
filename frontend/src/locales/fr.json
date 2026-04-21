@@ -6,10 +6,13 @@
     "cancel": "Annuler",
     "confirm": "Confirmer",
     "save": "Enregistrer",
+    "add": "Ajouter",
     "delete": "Supprimer",
     "edit": "Modifier",
     "close": "Fermer",
-    "search": "Rechercher"
+    "search": "Rechercher",
+    "tooManyRequests": "Trop de requêtes. Veuillez attendre un instant.",
+    "backendError": "Impossible de contacter le backend."
   },
   "auth": {
     "login": "Connexion",
@@ -47,7 +50,6 @@
     "volume": "Volume 24h"
   },
   "coinDetail": {
-    "backToDashboard": "Retour au dashboard",
     "officialWebsite": "Site officiel",
     "priceHistory": "Historique des prix",
     "days": "j",
@@ -80,5 +82,22 @@
     "triggered": "Déclenchée",
     "active": "Active",
     "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cette alerte ?"
+  },
+  "portfolio": {
+    "title": "Mon Portfolio",
+    "summary": "Résumé du Portfolio",
+    "currentValue": "Valeur Actuelle",
+    "totalInvested": "Total Investi",
+    "gainLoss": "Gain/Perte",
+    "percentage": "Pourcentage",
+    "quantity": "Quantité",
+    "purchasePrice": "Prix d'Achat",
+    "purchaseDate": "Date d'Achat",
+    "currentPrice": "Prix Actuel",
+    "notes": "Notes",
+    "coinId": "Crypto (ID CoinGecko)",
+    "addHolding": "Ajouter un Investissement",
+    "editHolding": "Modifier l'Investissement",
+    "empty": "Aucun investissement pour le moment. Ajoutez-en un pour commencer !"
   }
 }
