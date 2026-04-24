@@ -7,19 +7,16 @@ Endpoints :
   GET /api/history/{coin_id} : Historique des prix
   GET /api/detail/{coin_id} : Informations détaillées
   GET /api/cache/stats : Statistiques du cache (monitoring)
+
+Note : La gestion des exceptions (RateLimitException, TimeoutException, APIException)
+est centralisée dans le middleware exception_handler_middleware.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 import logging
 
 from services.coingecko_service import coingecko_service
 from core.cache import cache
-from core.exceptions import (
-    RateLimitException,
-    TimeoutException,
-    APIException,
-    to_http_exception
-)
 
 logger = logging.getLogger(__name__)
 
@@ -37,18 +34,10 @@ async def get_prices(coins: str = "bitcoin,ethereum,solana"):
     Returns:
         Dictionnaire avec les prix et métriques
     
-    Raises:
-        HTTPException 429: Rate limit atteint
-        HTTPException 504: Timeout
-        HTTPException 502: Erreur API
+    Note:
+        Les exceptions sont gérées par le middleware global
     """
-    try:
-        return await coingecko_service.get_prices(coins)
-    except (RateLimitException, TimeoutException, APIException) as e:
-        raise to_http_exception(e)
-    except Exception as e:
-        logger.error(f"Unexpected error in get_prices: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+    return await coingecko_service.get_prices(coins)
 
 
 @router.get("/api/search")
@@ -62,12 +51,7 @@ async def search_coins(q: str):
     Returns:
         Liste de coins correspondants (max 6)
     """
-    try:
-        return await coingecko_service.search_coins(q)
-    except Exception as e:
-        logger.error(f"Unexpected error in search_coins: {str(e)}")
-        # Retourner liste vide plutôt qu'une erreur pour la recherche
-        return []
+    return await coingecko_service.search_coins(q)
 
 
 @router.get("/api/history/{coin_id}")
@@ -82,12 +66,7 @@ async def get_history(coin_id: str, days: int = 7):
     Returns:
         Liste de points de données {date, price}
     """
-    try:
-        return await coingecko_service.get_history(coin_id, days)
-    except Exception as e:
-        logger.error(f"Unexpected error in get_history: {str(e)}")
-        # Retourner liste vide plutôt qu'une erreur
-        return []
+    return await coingecko_service.get_history(coin_id, days)
 
 
 @router.get("/api/detail/{coin_id}")
@@ -101,12 +80,7 @@ async def get_detail(coin_id: str):
     Returns:
         Dictionnaire avec les informations détaillées
     """
-    try:
-        return await coingecko_service.get_detail(coin_id)
-    except Exception as e:
-        logger.error(f"Unexpected error in get_detail: {str(e)}")
-        # Retourner objet vide plutôt qu'une erreur
-        return {}
+    return await coingecko_service.get_detail(coin_id)
 
 
 @router.get("/api/cache/stats")

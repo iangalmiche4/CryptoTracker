@@ -2,371 +2,315 @@
 test_cache.py — Tests unitaires pour core/cache.py
 
 Tests couverts :
+- Connexion Redis avec gestion d'erreurs
 - Stockage et récupération de données
 - Expiration des entrées (TTL)
-- Récupération de données périmées (stale)
 - Suppression d'entrées
 - Nettoyage du cache
 - Statistiques du cache
+- Fallback gracieux en cas d'erreur Redis
 
 Principes appliqués :
-- Isolation totale (pas de dépendances externes)
+- Isolation totale (mocks Redis)
 - Pattern AAA (Arrange-Act-Assert)
 - Couverture des cas limites
 """
 
 import pytest
-import time
-from unittest.mock import patch
+from unittest.mock import Mock, patch, MagicMock
+import redis
+import json
 
-from core.cache import MemoryCache, CacheEntry
+from core.cache import RedisCache
 
 
 # ══════════════════════════════════════════════════════════════════════
-# TESTS : CacheEntry
+# TESTS : RedisCache - Connexion
 # ══════════════════════════════════════════════════════════════════════
 
-class TestCacheEntry:
-    """Tests pour la classe CacheEntry"""
+class TestRedisCacheConnection:
+    """Tests pour la connexion Redis"""
     
-    def test_is_expired_should_return_false_for_fresh_entry(self):
+    @patch('core.cache.redis.Redis')
+    @patch('core.cache.redis.ConnectionPool')
+    def test_init_should_connect_successfully(self, mock_pool, mock_redis):
         """
-        GIVEN une entrée de cache récente
-        WHEN is_expired est appelé
-        THEN False est retourné
+        GIVEN Redis est disponible
+        WHEN RedisCache est initialisé
+        THEN la connexion est établie
         """
         # Arrange
-        entry = CacheEntry(data="test", timestamp=time.time(), ttl=60)
+        mock_client = Mock()
+        mock_client.ping.return_value = True
+        mock_redis.return_value = mock_client
         
         # Act
-        result = entry.is_expired()
+        cache = RedisCache()
         
         # Assert
-        assert result is False
+        assert cache._available is True
+        assert cache._client is not None
+        mock_client.ping.assert_called_once()
     
-    def test_is_expired_should_return_true_for_old_entry(self):
+    @patch('core.cache.redis.Redis')
+    @patch('core.cache.redis.ConnectionPool')
+    def test_init_should_handle_connection_error(self, mock_pool, mock_redis):
         """
-        GIVEN une entrée de cache expirée
-        WHEN is_expired est appelé
-        THEN True est retourné
+        GIVEN Redis n'est pas disponible
+        WHEN RedisCache est initialisé
+        THEN le mode dégradé est activé
         """
         # Arrange
-        old_timestamp = time.time() - 120  # 2 minutes ago
-        entry = CacheEntry(data="test", timestamp=old_timestamp, ttl=60)
+        mock_redis.side_effect = redis.ConnectionError("Connection refused")
         
         # Act
-        result = entry.is_expired()
+        cache = RedisCache()
         
         # Assert
-        assert result is True
-    
-    def test_age_should_return_seconds_since_creation(self):
-        """
-        GIVEN une entrée de cache
-        WHEN age est appelé
-        THEN l'âge en secondes est retourné
-        """
-        # Arrange
-        timestamp = time.time() - 10  # 10 seconds ago
-        entry = CacheEntry(data="test", timestamp=timestamp, ttl=60)
-        
-        # Act
-        age = entry.age()
-        
-        # Assert
-        assert 9 <= age <= 11  # Allow small time variance
+        assert cache._available is False
+        assert cache._client is None
 
 
 # ══════════════════════════════════════════════════════════════════════
-# TESTS : MemoryCache - Get/Set
+# TESTS : RedisCache - Get/Set
 # ══════════════════════════════════════════════════════════════════════
 
-class TestMemoryCacheGetSet:
+class TestRedisCacheGetSet:
     """Tests pour les opérations get/set du cache"""
     
     @pytest.fixture
-    def cache(self):
-        """Fixture qui fournit un cache vide"""
-        return MemoryCache()
+    def mock_redis_client(self):
+        """Fixture qui fournit un client Redis mocké"""
+        return Mock()
     
-    def test_get_should_return_none_for_missing_key(self, cache):
+    @pytest.fixture
+    def cache(self, mock_redis_client):
+        """Fixture qui fournit un cache avec Redis mocké"""
+        with patch('core.cache.redis.Redis') as mock_redis:
+            mock_redis.return_value = mock_redis_client
+            mock_redis_client.ping.return_value = True
+            cache = RedisCache()
+            cache._client = mock_redis_client
+            cache._available = True
+            return cache
+    
+    def test_get_should_return_none_for_missing_key(self, cache, mock_redis_client):
         """
-        GIVEN un cache vide
-        WHEN get est appelé avec une clé inexistante
+        GIVEN une clé inexistante
+        WHEN get est appelé
         THEN None est retourné
         """
+        # Arrange
+        mock_redis_client.get.return_value = None
+        
         # Act
         result = cache.get("nonexistent")
         
         # Assert
         assert result is None
+        assert cache._misses == 1
     
-    def test_set_and_get_should_store_and_retrieve_value(self, cache):
+    def test_set_and_get_should_store_and_retrieve_value(self, cache, mock_redis_client):
         """
         GIVEN une valeur stockée dans le cache
         WHEN get est appelé avec la même clé
         THEN la valeur est retournée
         """
         # Arrange
-        cache.set("key1", "value1", ttl=60)
+        test_data = {"test": "value"}
+        mock_redis_client.get.return_value = json.dumps(test_data)
         
         # Act
+        cache.set("key1", test_data, ttl=60)
         result = cache.get("key1")
         
         # Assert
-        assert result == "value1"
+        assert result == test_data
+        assert cache._hits == 1
+        mock_redis_client.setex.assert_called_once()
     
-    def test_get_should_return_none_for_expired_entry(self, cache):
+    def test_get_should_handle_json_decode_error(self, cache, mock_redis_client):
         """
-        GIVEN une entrée expirée dans le cache
+        GIVEN des données corrompues dans Redis
         WHEN get est appelé
         THEN None est retourné
         """
         # Arrange
-        with patch('time.time', return_value=1000):
-            cache.set("key1", "value1", ttl=10)
-        
-        # Act - Simulate time passing
-        with patch('time.time', return_value=1020):  # 20 seconds later
-            result = cache.get("key1")
-        
-        # Assert
-        assert result is None
-    
-    def test_get_stale_should_return_expired_data(self, cache):
-        """
-        GIVEN une entrée expirée dans le cache
-        WHEN get_stale est appelé
-        THEN les données périmées sont retournées
-        """
-        # Arrange
-        with patch('time.time', return_value=1000):
-            cache.set("key1", "stale_value", ttl=10)
-        
-        # Act - Simulate time passing
-        with patch('time.time', return_value=1020):  # 20 seconds later
-            result = cache.get_stale("key1")
-        
-        # Assert
-        assert result == "stale_value"
-    
-    def test_get_stale_should_return_none_for_missing_key(self, cache):
-        """
-        GIVEN un cache vide
-        WHEN get_stale est appelé
-        THEN None est retourné
-        """
-        # Act
-        result = cache.get_stale("nonexistent")
-        
-        # Assert
-        assert result is None
-    
-    def test_set_should_overwrite_existing_value(self, cache):
-        """
-        GIVEN une clé existante dans le cache
-        WHEN set est appelé avec la même clé
-        THEN la valeur est écrasée
-        """
-        # Arrange
-        cache.set("key1", "old_value", ttl=60)
+        mock_redis_client.get.return_value = "invalid json {"
         
         # Act
-        cache.set("key1", "new_value", ttl=60)
         result = cache.get("key1")
         
         # Assert
-        assert result == "new_value"
+        assert result is None
+        assert cache._misses == 1
+    
+    def test_get_should_return_none_when_redis_unavailable(self):
+        """
+        GIVEN Redis n'est pas disponible
+        WHEN get est appelé
+        THEN None est retourné
+        """
+        # Arrange
+        with patch('core.cache.redis.Redis') as mock_redis:
+            mock_redis.side_effect = redis.ConnectionError()
+            cache = RedisCache()
+        
+        # Act
+        result = cache.get("key1")
+        
+        # Assert
+        assert result is None
+        assert cache._misses == 1
+    
+    def test_set_should_return_false_when_redis_unavailable(self):
+        """
+        GIVEN Redis n'est pas disponible
+        WHEN set est appelé
+        THEN False est retourné
+        """
+        # Arrange
+        with patch('core.cache.redis.Redis') as mock_redis:
+            mock_redis.side_effect = redis.ConnectionError()
+            cache = RedisCache()
+        
+        # Act
+        result = cache.set("key1", "value1", ttl=60)
+        
+        # Assert
+        assert result is False
 
 
 # ══════════════════════════════════════════════════════════════════════
-# TESTS : MemoryCache - Delete/Clear
+# TESTS : RedisCache - Delete/Clear
 # ══════════════════════════════════════════════════════════════════════
 
-class TestMemoryCacheDeleteClear:
+class TestRedisCacheDeleteClear:
     """Tests pour les opérations de suppression du cache"""
     
     @pytest.fixture
-    def cache(self):
-        """Fixture qui fournit un cache vide"""
-        return MemoryCache()
+    def mock_redis_client(self):
+        """Fixture qui fournit un client Redis mocké"""
+        return Mock()
     
-    def test_delete_should_remove_existing_entry(self, cache):
+    @pytest.fixture
+    def cache(self, mock_redis_client):
+        """Fixture qui fournit un cache avec Redis mocké"""
+        with patch('core.cache.redis.Redis') as mock_redis:
+            mock_redis.return_value = mock_redis_client
+            mock_redis_client.ping.return_value = True
+            cache = RedisCache()
+            cache._client = mock_redis_client
+            cache._available = True
+            return cache
+    
+    def test_delete_should_remove_existing_entry(self, cache, mock_redis_client):
         """
         GIVEN une entrée dans le cache
         WHEN delete est appelé
         THEN l'entrée est supprimée et True est retourné
         """
         # Arrange
-        cache.set("key1", "value1", ttl=60)
+        mock_redis_client.delete.return_value = 1
         
         # Act
         result = cache.delete("key1")
         
         # Assert
         assert result is True
-        assert cache.get("key1") is None
+        mock_redis_client.delete.assert_called_once_with("key1")
     
-    def test_delete_should_return_false_for_nonexistent_key(self, cache):
+    def test_delete_should_return_false_for_nonexistent_key(self, cache, mock_redis_client):
         """
-        GIVEN un cache vide
-        WHEN delete est appelé avec une clé inexistante
+        GIVEN une clé inexistante
+        WHEN delete est appelé
         THEN False est retourné
         """
+        # Arrange
+        mock_redis_client.delete.return_value = 0
+        
         # Act
         result = cache.delete("nonexistent")
         
         # Assert
         assert result is False
     
-    def test_clear_should_empty_cache(self, cache):
+    def test_clear_should_flush_database(self, cache, mock_redis_client):
         """
-        GIVEN un cache avec plusieurs entrées
+        GIVEN un cache avec des entrées
         WHEN clear est appelé
         THEN toutes les entrées sont supprimées
         """
-        # Arrange
-        cache.set("key1", "value1", ttl=60)
-        cache.set("key2", "value2", ttl=60)
-        cache.set("key3", "value3", ttl=60)
-        
         # Act
-        cache.clear()
+        result = cache.clear()
         
         # Assert
-        assert cache.get("key1") is None
-        assert cache.get("key2") is None
-        assert cache.get("key3") is None
-    
-    def test_clear_should_reset_statistics(self, cache):
-        """
-        GIVEN un cache avec des statistiques
-        WHEN clear est appelé
-        THEN les statistiques sont réinitialisées
-        """
-        # Arrange
-        cache.set("key1", "value1", ttl=60)
-        cache.get("key1")  # Hit
-        cache.get("key2")  # Miss
-        
-        # Act
-        cache.clear()
-        stats = cache.stats()
-        
-        # Assert
-        assert stats["hits"] == 0
-        assert stats["misses"] == 0
+        assert result is True
+        mock_redis_client.flushdb.assert_called_once()
+        assert cache._hits == 0
+        assert cache._misses == 0
+        assert cache._errors == 0
 
 
 # ══════════════════════════════════════════════════════════════════════
-# TESTS : MemoryCache - Cleanup
+# TESTS : RedisCache - Statistics
 # ══════════════════════════════════════════════════════════════════════
 
-class TestMemoryCacheCleanup:
-    """Tests pour le nettoyage du cache"""
-    
-    @pytest.fixture
-    def cache(self):
-        """Fixture qui fournit un cache vide"""
-        return MemoryCache()
-    
-    def test_cleanup_expired_should_remove_only_expired_entries(self, cache):
-        """
-        GIVEN un cache avec des entrées expirées et valides
-        WHEN cleanup_expired est appelé
-        THEN seules les entrées expirées sont supprimées
-        """
-        # Arrange
-        with patch('time.time', return_value=1000):
-            cache.set("fresh1", "value1", ttl=100)
-            cache.set("fresh2", "value2", ttl=100)
-            cache.set("expired1", "value3", ttl=10)
-            cache.set("expired2", "value4", ttl=10)
-        
-        # Act - Simulate time passing
-        with patch('time.time', return_value=1050):  # 50 seconds later
-            removed_count = cache.cleanup_expired()
-        
-        # Assert
-        assert removed_count == 2
-        assert cache.get_stale("fresh1") == "value1"
-        assert cache.get_stale("fresh2") == "value2"
-        assert cache.get_stale("expired1") is None
-        assert cache.get_stale("expired2") is None
-    
-    def test_cleanup_expired_should_return_zero_for_empty_cache(self, cache):
-        """
-        GIVEN un cache vide
-        WHEN cleanup_expired est appelé
-        THEN 0 est retourné
-        """
-        # Act
-        removed_count = cache.cleanup_expired()
-        
-        # Assert
-        assert removed_count == 0
-    
-    def test_cleanup_expired_should_return_zero_when_no_expired_entries(self, cache):
-        """
-        GIVEN un cache avec seulement des entrées valides
-        WHEN cleanup_expired est appelé
-        THEN 0 est retourné
-        """
-        # Arrange
-        cache.set("key1", "value1", ttl=60)
-        cache.set("key2", "value2", ttl=60)
-        
-        # Act
-        removed_count = cache.cleanup_expired()
-        
-        # Assert
-        assert removed_count == 0
-
-
-# ══════════════════════════════════════════════════════════════════════
-# TESTS : MemoryCache - Statistics
-# ══════════════════════════════════════════════════════════════════════
-
-class TestMemoryCacheStatistics:
+class TestRedisCacheStatistics:
     """Tests pour les statistiques du cache"""
     
     @pytest.fixture
-    def cache(self):
-        """Fixture qui fournit un cache vide"""
-        return MemoryCache()
+    def mock_redis_client(self):
+        """Fixture qui fournit un client Redis mocké"""
+        client = Mock()
+        client.info.return_value = {
+            "connected_clients": 5,
+            "total_commands_processed": 1000,
+            "redis_version": "7.0.0",
+            "used_memory_human": "1.5M",
+            "used_memory_peak_human": "2.0M"
+        }
+        client.dbsize.return_value = 42
+        return client
     
-    def test_stats_should_track_hits_and_misses(self, cache):
+    @pytest.fixture
+    def cache(self, mock_redis_client):
+        """Fixture qui fournit un cache avec Redis mocké"""
+        with patch('core.cache.redis.Redis') as mock_redis:
+            mock_redis.return_value = mock_redis_client
+            mock_redis_client.ping.return_value = True
+            cache = RedisCache()
+            cache._client = mock_redis_client
+            cache._available = True
+            return cache
+    
+    def test_stats_should_track_hits_and_misses(self, cache, mock_redis_client):
         """
         GIVEN des opérations get sur le cache
         WHEN stats est appelé
         THEN les hits et misses sont comptabilisés
         """
         # Arrange
-        cache.set("key1", "value1", ttl=60)
+        cache._hits = 2
+        cache._misses = 3
         
         # Act
-        cache.get("key1")  # Hit
-        cache.get("key1")  # Hit
-        cache.get("key2")  # Miss
-        cache.get("key3")  # Miss
-        cache.get("key3")  # Miss
-        
         stats = cache.stats()
         
         # Assert
         assert stats["hits"] == 2
         assert stats["misses"] == 3
+        assert stats["total_requests"] == 5
     
-    def test_stats_should_calculate_hit_rate_correctly(self, cache):
+    def test_stats_should_calculate_hit_rate_correctly(self, cache, mock_redis_client):
         """
         GIVEN des hits et misses
         WHEN stats est appelé
         THEN le hit_rate est calculé correctement
         """
         # Arrange
-        cache.set("key1", "value1", ttl=60)
-        cache.get("key1")  # Hit
-        cache.get("key2")  # Miss
+        cache._hits = 1
+        cache._misses = 1
         
         # Act
         stats = cache.stats()
@@ -374,131 +318,174 @@ class TestMemoryCacheStatistics:
         # Assert
         assert stats["hit_rate"] == "50.00%"
     
-    def test_stats_should_return_zero_hit_rate_for_empty_cache(self, cache):
+    def test_stats_should_include_redis_info(self, cache, mock_redis_client):
         """
-        GIVEN un cache sans requêtes
+        GIVEN Redis est disponible
         WHEN stats est appelé
-        THEN le hit_rate est 0%
+        THEN les informations Redis sont incluses
         """
         # Act
         stats = cache.stats()
         
         # Assert
-        assert stats["hit_rate"] == "0.00%"
-        assert stats["hits"] == 0
-        assert stats["misses"] == 0
-    
-    def test_stats_should_list_all_cache_keys(self, cache):
-        """
-        GIVEN un cache avec plusieurs entrées
-        WHEN stats est appelé
-        THEN toutes les clés sont listées
-        """
-        # Arrange
-        cache.set("key1", "value1", ttl=60)
-        cache.set("key2", "value2", ttl=60)
-        cache.set("key3", "value3", ttl=60)
-        
-        # Act
-        stats = cache.stats()
-        
-        # Assert
-        assert set(stats["keys"]) == {"key1", "key2", "key3"}
-        assert stats["entries"] == 3
-    
-    def test_stats_should_calculate_total_size(self, cache):
-        """
-        GIVEN un cache avec des données
-        WHEN stats est appelé
-        THEN la taille totale est calculée
-        """
-        # Arrange
-        cache.set("key1", "short", ttl=60)
-        cache.set("key2", "a much longer value", ttl=60)
-        
-        # Act
-        stats = cache.stats()
-        
-        # Assert
-        assert stats["total_size_bytes"] > 0
-        assert isinstance(stats["total_size_bytes"], int)
+        assert stats["available"] is True
+        assert stats["keys_count"] == 42
+        assert "redis_version" in stats
 
 
 # ══════════════════════════════════════════════════════════════════════
-# TESTS : MemoryCache - Edge Cases
+# TESTS : RedisCache - Utility Methods
 # ══════════════════════════════════════════════════════════════════════
 
-class TestMemoryCacheEdgeCases:
-    """Tests pour les cas limites du cache"""
+class TestRedisCacheUtility:
+    """Tests pour les méthodes utilitaires du cache"""
     
     @pytest.fixture
-    def cache(self):
-        """Fixture qui fournit un cache vide"""
-        return MemoryCache()
+    def mock_redis_client(self):
+        """Fixture qui fournit un client Redis mocké"""
+        return Mock()
     
-    def test_cache_should_handle_none_values(self, cache):
+    @pytest.fixture
+    def cache(self, mock_redis_client):
+        """Fixture qui fournit un cache avec Redis mocké"""
+        with patch('core.cache.redis.Redis') as mock_redis:
+            mock_redis.return_value = mock_redis_client
+            mock_redis_client.ping.return_value = True
+            cache = RedisCache()
+            cache._client = mock_redis_client
+            cache._available = True
+            return cache
+    
+    def test_ping_should_return_true_when_redis_available(self, cache, mock_redis_client):
         """
-        GIVEN une valeur None stockée
-        WHEN get est appelé
-        THEN None est retourné (mais c'est la valeur, pas une absence)
+        GIVEN Redis est disponible
+        WHEN ping est appelé
+        THEN True est retourné
         """
         # Arrange
-        cache.set("key1", None, ttl=60)
+        mock_redis_client.ping.return_value = True
+        
+        # Act
+        result = cache.ping()
+        
+        # Assert
+        assert result is True
+    
+    def test_exists_should_check_key_existence(self, cache, mock_redis_client):
+        """
+        GIVEN une clé dans Redis
+        WHEN exists est appelé
+        THEN True est retourné
+        """
+        # Arrange
+        mock_redis_client.exists.return_value = 1
+        
+        # Act
+        result = cache.exists("key1")
+        
+        # Assert
+        assert result is True
+    
+    def test_get_ttl_should_return_remaining_time(self, cache, mock_redis_client):
+        """
+        GIVEN une clé avec TTL
+        WHEN get_ttl est appelé
+        THEN le TTL restant est retourné
+        """
+        # Arrange
+        mock_redis_client.ttl.return_value = 42
+        
+        # Act
+        result = cache.get_ttl("key1")
+        
+        # Assert
+        assert result == 42
+    
+    def test_keys_should_return_matching_keys(self, cache, mock_redis_client):
+        """
+        GIVEN des clés dans Redis
+        WHEN keys est appelé avec un pattern
+        THEN les clés correspondantes sont retournées
+        """
+        # Arrange
+        mock_redis_client.keys.return_value = ["prices:btc", "prices:eth"]
+        
+        # Act
+        result = cache.keys("prices:*")
+        
+        # Assert
+        assert result == ["prices:btc", "prices:eth"]
+
+
+# ══════════════════════════════════════════════════════════════════════
+# TESTS : RedisCache - Error Handling
+# ══════════════════════════════════════════════════════════════════════
+
+class TestRedisCacheErrorHandling:
+    """Tests pour la gestion d'erreurs du cache"""
+    
+    @pytest.fixture
+    def mock_redis_client(self):
+        """Fixture qui fournit un client Redis mocké"""
+        return Mock()
+    
+    @pytest.fixture
+    def cache(self, mock_redis_client):
+        """Fixture qui fournit un cache avec Redis mocké"""
+        with patch('core.cache.redis.Redis') as mock_redis:
+            mock_redis.return_value = mock_redis_client
+            mock_redis_client.ping.return_value = True
+            cache = RedisCache()
+            cache._client = mock_redis_client
+            cache._available = True
+            return cache
+    
+    def test_get_should_handle_redis_error_gracefully(self, cache, mock_redis_client):
+        """
+        GIVEN Redis retourne une erreur
+        WHEN get est appelé
+        THEN None est retourné et l'erreur est comptabilisée
+        """
+        # Arrange
+        mock_redis_client.get.side_effect = redis.RedisError("Connection lost")
         
         # Act
         result = cache.get("key1")
         
         # Assert
         assert result is None
-        # Verify it's actually in cache
-        assert "key1" in cache.stats()["keys"]
+        assert cache._errors == 1
     
-    def test_cache_should_handle_complex_data_types(self, cache):
+    def test_set_should_handle_serialization_error(self, cache, mock_redis_client):
         """
-        GIVEN des types de données complexes
-        WHEN ils sont stockés et récupérés
-        THEN les données sont préservées
+        GIVEN des données non sérialisables
+        WHEN set est appelé
+        THEN False est retourné
         """
         # Arrange
-        complex_data = {
-            "list": [1, 2, 3],
-            "dict": {"nested": "value"},
-            "tuple": (1, 2, 3)
-        }
-        cache.set("complex", complex_data, ttl=60)
+        non_serializable = object()
         
         # Act
-        result = cache.get("complex")
+        result = cache.set("key1", non_serializable, ttl=60)
         
         # Assert
-        assert result == complex_data
-        assert result["list"] == [1, 2, 3]
+        assert result is False
     
-    def test_cache_should_handle_zero_ttl(self, cache):
+    def test_get_stale_should_fallback_to_get(self, cache, mock_redis_client):
         """
-        GIVEN un TTL de 0
-        WHEN l'entrée est créée
-        THEN elle est immédiatement expirée
-        """
-        # Arrange & Act
-        cache.set("key1", "value1", ttl=0)
-        
-        # Assert
-        assert cache.get("key1") is None
-        assert cache.get_stale("key1") == "value1"
-    
-    def test_cache_should_handle_large_ttl(self, cache):
-        """
-        GIVEN un TTL très grand
-        WHEN l'entrée est créée
-        THEN elle reste valide
+        GIVEN une clé dans Redis
+        WHEN get_stale est appelé
+        THEN get est appelé (Redis ne garde pas les données expirées)
         """
         # Arrange
-        cache.set("key1", "value1", ttl=999999)
+        test_data = {"test": "value"}
+        mock_redis_client.get.return_value = json.dumps(test_data)
         
         # Act
-        result = cache.get("key1")
+        result = cache.get_stale("key1")
         
         # Assert
-        assert result == "value1"
+        assert result == test_data
+        mock_redis_client.get.assert_called_once_with("key1")
 
+# Made with Bob

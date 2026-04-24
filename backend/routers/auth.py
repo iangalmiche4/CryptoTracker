@@ -7,9 +7,11 @@ Endpoints :
   GET /api/auth/me : Récupérer les informations de l'utilisateur courant
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from database import get_db
 from models import User
@@ -17,10 +19,12 @@ from schemas import UserRegister, Token, UserResponse
 from core.security import hash_password, authenticate_user, create_access_token, get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user_data: UserRegister, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register(request: Request, user_data: UserRegister, db: Session = Depends(get_db)):
     """
     Créer un nouveau compte utilisateur.
     
@@ -55,7 +59,8 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """
     Se connecter avec email + mot de passe.
     
@@ -64,11 +69,13 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         db : Session de base de données
     
     Returns:
-        Token JWT + type de token
+        Token JWT + type de token + expires_in
     
     Raises:
         HTTPException 401 si les identifiants sont incorrects
     """
+    from config import settings
+    
     # Authentifier l'utilisateur
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
@@ -81,7 +88,11 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     # Créer le token JWT
     access_token = create_access_token(data={"sub": user.email})
     
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": settings.access_token_expire_minutes * 60  # En secondes
+    }
 
 
 @router.get("/me", response_model=UserResponse)

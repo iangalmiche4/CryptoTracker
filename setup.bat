@@ -31,6 +31,25 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Vérifier si Redis est installé
+redis-server --version >nul 2>&1
+if errorlevel 1 (
+    echo [AVERTISSEMENT] Redis n'est pas installe ou n'est pas dans le PATH
+    echo.
+    echo Redis est REQUIS pour le cache de l'application.
+    echo.
+    echo Options d'installation :
+    echo   1. Docker (recommande) : docker run -d -p 6379:6379 redis:latest
+    echo   2. Windows : https://github.com/microsoftarchive/redis/releases
+    echo   3. WSL : sudo apt install redis-server
+    echo.
+    echo L'application fonctionnera en mode degrade sans Redis.
+    echo.
+    pause
+) else (
+    echo [OK] Redis est installe
+)
+
 echo [OK] Tous les prerequis sont installes
 echo.
 
@@ -150,12 +169,16 @@ echo ========================================
 echo.
 echo Pour demarrer l'application :
 echo.
-echo   Terminal 1 - Backend :
+echo   Terminal 1 - Redis (si pas deja demarre) :
+echo     redis-server
+echo     OU avec Docker : docker run -d -p 6379:6379 redis:latest
+echo.
+echo   Terminal 2 - Backend :
 echo     cd backend
 echo     .venv\Scripts\activate
 echo     uvicorn main:app --reload --port 8000
 echo.
-echo   Terminal 2 - Frontend :
+echo   Terminal 3 - Frontend :
 echo     cd frontend
 echo     npm run dev
 echo.

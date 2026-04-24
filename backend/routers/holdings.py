@@ -127,7 +127,7 @@ def delete_holding(
 
 @router.get("/summary")
 async def get_portfolio_summary(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(dependency=get_current_user),
     db: Session = Depends(get_db)
 ):
     """Statistiques globales du portfolio"""
