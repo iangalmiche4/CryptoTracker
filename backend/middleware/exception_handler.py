@@ -106,4 +106,4 @@ async def exception_handler_middleware(request: Request, call_next):
             content={"detail": "Internal server error"}
         )
 
-# Made with Bob
+ 

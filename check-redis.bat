@@ -102,5 +102,3 @@ if %errorlevel% equ 0 (
 echo Vous pouvez maintenant demarrer le backend
 echo.
 pause
-
-@REM Made with Bob

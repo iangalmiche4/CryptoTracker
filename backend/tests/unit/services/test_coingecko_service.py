@@ -659,3 +659,294 @@ class TestGetDetail:
         # Les valeurs manquantes doivent être None ou des valeurs par défaut
 
  
+
+
+# ══════════════════════════════════════════════════════════════════════
+# TESTS ADDITIONNELS : Couverture complète des branches stale data
+# ══════════════════════════════════════════════════════════════════════
+
+class TestStaleDataFallback:
+    """Tests pour la gestion des données périmées (stale data) en fallback"""
+    
+    @pytest.mark.asyncio
+    async def test_get_prices_should_return_stale_on_non_200_with_stale_data(
+        self, mock_settings, mock_cache, mock_httpx_client
+    ):
+        """
+        GIVEN l'API retourne une erreur 500 et des données stale existent
+        WHEN get_prices est appelé
+        THEN les données stale sont retournées
+        """
+        # Arrange
+        mock_client, mock_response = mock_httpx_client
+        service = CoinGeckoService()
+        stale_data = {"bitcoin": {"usd": 40000}}
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = stale_data
+        
+        mock_response.status_code = 500
+        mock_client.get.return_value = mock_response
+        
+        with patch('httpx.AsyncClient', return_value=mock_client):
+            # Act
+            result = await service.get_prices("bitcoin")
+        
+        # Assert
+        assert result == stale_data
+        mock_cache.get_stale.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_get_prices_should_return_stale_on_timeout_with_stale_data(
+        self, mock_settings, mock_cache, mock_httpx_client
+    ):
+        """
+        GIVEN l'API timeout et des données stale existent
+        WHEN get_prices est appelé
+        THEN les données stale sont retournées
+        """
+        # Arrange
+        mock_client, mock_response = mock_httpx_client
+        service = CoinGeckoService()
+        stale_data = {"bitcoin": {"usd": 40000}}
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = stale_data
+        mock_client.get.side_effect = httpx.TimeoutException("Timeout")
+        
+        with patch('httpx.AsyncClient', return_value=mock_client):
+            # Act
+            result = await service.get_prices("bitcoin")
+        
+        # Assert
+        assert result == stale_data
+        mock_cache.get_stale.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_search_coins_should_return_stale_on_429(
+        self, mock_settings, mock_cache, mock_httpx_client
+    ):
+        """
+        GIVEN l'API retourne 429 et des données stale existent
+        WHEN search_coins est appelé
+        THEN les données stale sont retournées
+        """
+        # Arrange
+        mock_client, mock_response = mock_httpx_client
+        service = CoinGeckoService()
+        stale_data = [{"id": "bitcoin", "name": "Bitcoin", "symbol": "btc"}]
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = stale_data
+        
+        mock_response.status_code = 429
+        mock_client.get.return_value = mock_response
+        
+        with patch('httpx.AsyncClient', return_value=mock_client):
+            # Act
+            result = await service.search_coins("bitcoin")
+        
+        # Assert
+        assert result == stale_data
+        mock_cache.get_stale.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_search_coins_should_return_stale_on_non_200(
+        self, mock_settings, mock_cache, mock_httpx_client
+    ):
+        """
+        GIVEN l'API retourne une erreur et des données stale existent
+        WHEN search_coins est appelé
+        THEN les données stale sont retournées
+        """
+        # Arrange
+        mock_client, mock_response = mock_httpx_client
+        service = CoinGeckoService()
+        stale_data = [{"id": "bitcoin", "name": "Bitcoin", "symbol": "btc"}]
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = stale_data
+        
+        mock_response.status_code = 500
+        mock_client.get.return_value = mock_response
+        
+        with patch('httpx.AsyncClient', return_value=mock_client):
+            # Act
+            result = await service.search_coins("bitcoin")
+        
+        # Assert
+        assert result == stale_data
+    
+    @pytest.mark.asyncio
+    async def test_search_coins_should_return_stale_on_timeout(
+        self, mock_settings, mock_cache, mock_httpx_client
+    ):
+        """
+        GIVEN l'API timeout et des données stale existent
+        WHEN search_coins est appelé
+        THEN les données stale sont retournées
+        """
+        # Arrange
+        mock_client, mock_response = mock_httpx_client
+        service = CoinGeckoService()
+        stale_data = [{"id": "bitcoin", "name": "Bitcoin", "symbol": "btc"}]
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = stale_data
+        mock_client.get.side_effect = httpx.TimeoutException("Timeout")
+        
+        with patch('httpx.AsyncClient', return_value=mock_client):
+            # Act
+            result = await service.search_coins("bitcoin")
+        
+        # Assert
+        assert result == stale_data
+    
+    @pytest.mark.asyncio
+    async def test_get_history_should_return_stale_on_429(
+        self, mock_settings, mock_cache, mock_httpx_client
+    ):
+        """
+        GIVEN l'API retourne 429 et des données stale existent
+        WHEN get_history est appelé
+        THEN les données stale sont retournées
+        """
+        # Arrange
+        mock_client, mock_response = mock_httpx_client
+        service = CoinGeckoService()
+        stale_data = [{"date": "01/01", "price": 40000}]
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = stale_data
+        
+        mock_response.status_code = 429
+        mock_client.get.return_value = mock_response
+        
+        with patch('httpx.AsyncClient', return_value=mock_client):
+            # Act
+            result = await service.get_history("bitcoin")
+        
+        # Assert
+        assert result == stale_data
+    
+    @pytest.mark.asyncio
+    async def test_get_history_should_return_stale_on_non_200(
+        self, mock_settings, mock_cache, mock_httpx_client
+    ):
+        """
+        GIVEN l'API retourne une erreur et des données stale existent
+        WHEN get_history est appelé
+        THEN les données stale sont retournées
+        """
+        # Arrange
+        mock_client, mock_response = mock_httpx_client
+        service = CoinGeckoService()
+        stale_data = [{"date": "01/01", "price": 40000}]
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = stale_data
+        
+        mock_response.status_code = 500
+        mock_client.get.return_value = mock_response
+        
+        with patch('httpx.AsyncClient', return_value=mock_client):
+            # Act
+            result = await service.get_history("bitcoin")
+        
+        # Assert
+        assert result == stale_data
+    
+    @pytest.mark.asyncio
+    async def test_get_history_should_return_stale_on_timeout(
+        self, mock_settings, mock_cache, mock_httpx_client
+    ):
+        """
+        GIVEN l'API timeout et des données stale existent
+        WHEN get_history est appelé
+        THEN les données stale sont retournées
+        """
+        # Arrange
+        mock_client, mock_response = mock_httpx_client
+        service = CoinGeckoService()
+        stale_data = [{"date": "01/01", "price": 40000}]
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = stale_data
+        mock_client.get.side_effect = httpx.TimeoutException("Timeout")
+        
+        with patch('httpx.AsyncClient', return_value=mock_client):
+            # Act
+            result = await service.get_history("bitcoin")
+        
+        # Assert
+        assert result == stale_data
+    
+    @pytest.mark.asyncio
+    async def test_get_detail_should_return_stale_on_429(
+        self, mock_settings, mock_cache, mock_httpx_client
+    ):
+        """
+        GIVEN l'API retourne 429 et des données stale existent
+        WHEN get_detail est appelé
+        THEN les données stale sont retournées
+        """
+        # Arrange
+        mock_client, mock_response = mock_httpx_client
+        service = CoinGeckoService()
+        stale_data = {"id": "bitcoin", "name": "Bitcoin"}
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = stale_data
+        
+        mock_response.status_code = 429
+        mock_client.get.return_value = mock_response
+        
+        with patch('httpx.AsyncClient', return_value=mock_client):
+            # Act
+            result = await service.get_detail("bitcoin")
+        
+        # Assert
+        assert result == stale_data
+    
+    @pytest.mark.asyncio
+    async def test_get_detail_should_return_stale_on_non_200(
+        self, mock_settings, mock_cache, mock_httpx_client
+    ):
+        """
+        GIVEN l'API retourne une erreur et des données stale existent
+        WHEN get_detail est appelé
+        THEN les données stale sont retournées
+        """
+        # Arrange
+        mock_client, mock_response = mock_httpx_client
+        service = CoinGeckoService()
+        stale_data = {"id": "bitcoin", "name": "Bitcoin"}
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = stale_data
+        
+        mock_response.status_code = 500
+        mock_client.get.return_value = mock_response
+        
+        with patch('httpx.AsyncClient', return_value=mock_client):
+            # Act
+            result = await service.get_detail("bitcoin")
+        
+        # Assert
+        assert result == stale_data
+    
+    @pytest.mark.asyncio
+    async def test_get_detail_should_return_stale_on_timeout(
+        self, mock_settings, mock_cache, mock_httpx_client
+    ):
+        """
+        GIVEN l'API timeout et des données stale existent
+        WHEN get_detail est appelé
+        THEN les données stale sont retournées
+        """
+        # Arrange
+        mock_client, mock_response = mock_httpx_client
+        service = CoinGeckoService()
+        stale_data = {"id": "bitcoin", "name": "Bitcoin"}
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = stale_data
+        mock_client.get.side_effect = httpx.TimeoutException("Timeout")
+        
+        with patch('httpx.AsyncClient', return_value=mock_client):
+            # Act
+            result = await service.get_detail("bitcoin")
+        
+        # Assert
+        assert result == stale_data
+
+ 

@@ -129,4 +129,3 @@ Write-Host "Logs disponibles dans les fenêtres séparées" -ForegroundColor Cya
 Write-Host ""
 Read-Host "Appuyez sur Entrée pour quitter"
 
-# Made with Bob

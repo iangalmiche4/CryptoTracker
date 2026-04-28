@@ -461,4 +461,3 @@ if __name__ == "__main__":
         print(f"\n{Colors.RED}Erreur inattendue: {e}{Colors.RESET}")
         sys.exit(1)
 
-# Made with Bob

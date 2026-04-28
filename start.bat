@@ -117,5 +117,3 @@ echo.
 echo Logs disponibles dans les fenetres separees
 echo.
 pause
-
-@REM Made with Bob

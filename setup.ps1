@@ -162,4 +162,4 @@ Write-Host "Puis ouvrez http://localhost:5173 dans votre navigateur" -Foreground
 Write-Host ""
 Read-Host "Appuyez sur Entrée pour quitter"
 
-# Made with Bob
+ 

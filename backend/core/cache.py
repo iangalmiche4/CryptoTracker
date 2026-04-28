@@ -364,4 +364,4 @@ class RedisCache:
 # Instance globale du cache Redis
 cache = RedisCache()
 
-# Made with Bob
+ 

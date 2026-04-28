@@ -292,7 +292,7 @@ def create_links(base_url: str, resource_id: Optional[int] = None,
     
     return links
 
-# Made with Bob
+ 
 
 
 # ── Schémas pour compatibilité avec ancien router user.py ────────────

@@ -140,4 +140,4 @@ echo "  - Fermez les terminaux Backend et Frontend (Ctrl+C)"
 echo "  - Arrêtez Redis : docker stop cryptotracker-redis"
 echo ""
 
-# Made with Bob
+ 
